@@ -3,9 +3,9 @@ import os
 from aiogram import Bot, Dispatcher, types, Router
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
 import logging
 from dotenv import load_dotenv
+from anty_ddos import RateLimitMiddleware
 from database import (
     init,
     set_user_state,
@@ -147,6 +147,7 @@ async def fallback_handler(message: types.Message):
 
 async def main():
     await init()
+    dp.update.middleware(RateLimitMiddleware(limit=2.0))
     dp.include_router(router)
     await dp.start_polling(bot)
 

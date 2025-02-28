@@ -107,7 +107,7 @@ async def my_tickets(message: types.Message):
 
     response = "📜 Ваши заявки:\n\n"
     for ticket in tickets[:5]:
-        response += f"🔹 #{ticket['id']} ({ticket['category']}): {ticket['text'][:50]}...\n"
+        response += f"🔹 #{ticket['ticket_id']} ({ticket['category']}): {ticket['text'][:50]} {ticket['created_at']}\n"
 
     await message.answer(response)
 
@@ -148,6 +148,7 @@ async def save_ticket(message: types.Message):
         ticket_id = await create_ticket(user_id, message.text, category)
         await message.answer(f"✅ Ваша заявка #{ticket_id} принята в категорию: {category.capitalize()}!")
         await set_user_state(user_id, state='open')
+        await clear_user_state(user_id)
         try:
             operators = await get_operators()
             # kb_markup = admin_keyboard()

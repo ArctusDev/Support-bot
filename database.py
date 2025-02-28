@@ -213,7 +213,8 @@ async def get_user_category(user_id: int):
 async def get_user_tickets(user_id: int):
     conn = await init_db()
     try:
-        rows = await conn.fetch("SELECT id, category, text, created_at FROM tickets WHERE user_id = $1 ORDER BY created_at DESC", user_id)
+        rows = await conn.fetch("SELECT ticket_id, category, text, created_at FROM tickets WHERE user_id = $1 and status = 'open' ORDER BY created_at DESC", user_id)
+        print(f"{rows}")
         return rows  # Возвращаем список тикетов
     except Exception as e:
         logger.error(f"Ошибка при получении тикетов пользователя {user_id}: {e}")

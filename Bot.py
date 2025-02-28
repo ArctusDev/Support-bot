@@ -5,7 +5,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 from aiogram.filters import Command
 import logging
 from dotenv import load_dotenv
-from anty_ddos import RateLimitMiddleware
+from anty_ddos import WriteLimit
 from database import (
     init,
     set_user_state,
@@ -147,7 +147,7 @@ async def fallback_handler(message: types.Message):
 
 async def main():
     await init()
-    dp.update.middleware(RateLimitMiddleware(limit=2.0))
+    # dp.update.middleware(WriteLimit(limit=2.0))
     dp.include_router(router)
     await dp.start_polling(bot)
 

@@ -3,7 +3,8 @@ from aiogram import Bot
 from aiogram import Router, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton, ReplyKeyboardMarkup
-from database import get_all_tickets, update_ticket_status, get_ticket_by_id, set_user_role, get_user_role, add_admin_user
+from database import get_all_tickets, update_ticket_status, get_ticket_by_id, set_user_role, get_user_role, \
+    add_admin_user, set_user_state
 from dotenv import load_dotenv
 import logging
 
@@ -27,6 +28,10 @@ def admin_keyboard():
 # Просмотр всех заявок
 @router.message(lambda msg: msg.text.find("Все заявки") != -1)
 async def view_tickets(message: types.Message):
+    user_id = message.from_user.id
+    role = await get_user_role(user_id)
+    if role != 'operator':
+        return
 
     tickets = await get_all_tickets()
     if not tickets:
@@ -45,7 +50,6 @@ async def view_tickets(message: types.Message):
 # Выбор заявки оператором
 @router.message()
 async def select_ticket(message: types.Message):
-    # TODO: проверять state
     print('called select_ticket')
     operator_id = message.from_user.id
     ticket_id = -1
@@ -54,18 +58,29 @@ async def select_ticket(message: types.Message):
 
     ticket = await get_ticket_by_id(ticket_id)
     if not ticket:
-        await message.answer("❌ Заявка не найдена. Попробуйте снова.")
+        await message.answer("❌ Заявка не найдена.")
         return
 
     await update_ticket_status(ticket_id, "в работе")
+    await set_user_state(operator_id, "working_on_ticket")  # Смена состояния оператора
     await message.answer(f"✅ Вы выбрали заявку #{ticket_id}. Общение начато.", reply_markup=InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="✅ Закрыть заявку", callback_data=f"close_ticket_{ticket_id}")],
-            [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_menu")]
+            [InlineKeyboardButton(text="🔙 Назад", callback_data=f"back_from_ticket_{ticket_id}")]
         ]
     ))
 
     await bot.send_message(ticket["user_id"], f"🛠 Ваша заявка #{ticket_id} теперь в работе. Оператор свяжется с вами.")
+
+
+@router.callback_query(lambda c: c.data.startswith("back_from_ticket_"))
+async def back_from_ticket(callback: types.CallbackQuery):
+    operator_id = callback.from_user.id
+    ticket_id = callback.data.split("_")[2]
+
+    await set_user_state(operator_id, "idle")  # 🔹 Возвращаем оператору состояние "idle"
+    await callback.message.answer("🔙 Вы вернулись в главное меню оператора.", reply_markup=admin_keyboard())
+
 
 # Закрытие заявки
 @router.callback_query(lambda c: c.data.startswith("close_ticket_"))

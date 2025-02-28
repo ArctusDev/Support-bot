@@ -39,6 +39,7 @@ async def create_tables():
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS tickets (
                 ticket_id SERIAL PRIMARY KEY,
+                category TEXT DEFAULT NULL,
                 user_id BIGINT REFERENCES users(user_id),
                 text TEXT,
                 status TEXT DEFAULT 'open',
@@ -65,12 +66,21 @@ async def init():
 
 
 # Добавляем пользователя, если его нет
-async def add_user(user_id: int, role: str = 'user'):
+# async def add_user(user_id: int, role: str = 'user', state: str):
+#     conn = await init_db()
+#     await conn.execute(
+#         "INSERT INTO users (user_id, role, state) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO NOTHING",
+#         user_id, role, state
+#     )
+#     await conn.close()
+
+async def user_in_db(user_id: int):
     conn = await init_db()
-    await conn.execute(
-        "INSERT INTO users (user_id, role) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING",
-        user_id, role
-    )
+    # Проверяем, есть ли пользователь в таблице. Если нет - добавляем
+    user_exists = await conn.fetchval("SELECT 1 FROM users WHERE user_id = $1", user_id)
+    if not user_exists:
+        print("Пользователя нет в таблице")
+        await conn.execute("INSERT INTO users (user_id, role) VALUES ($1, $2)", user_id, 'USER')
     await conn.close()
 
 # Создаём новую заявку
@@ -78,11 +88,9 @@ async def create_ticket(user_id: int, text: str, category: str):
     print(f"Попытка записать заявку: {user_id}, {text}, {category}")
     conn = await init_db()
     try:
-        # Проверяем, есть ли пользователь в таблице. Если нет - добавляем
-        user_exists = await conn.fetchval("SELECT 1 FROM users WHERE user_id = $1", user_id)
-        if not user_exists:
-            print("Пользователя нет в таблице")
-            await conn.execute("INSERT INTO users (user_id, role) VALUES ($1, $2)", user_id, 'USER')
+        if not category:
+            category = "unknown"   # На всякий случай
+
         ticket_id = await conn.fetchval(
             "INSERT INTO tickets (user_id, text, category) VALUES ($1, $2, $3) RETURNING ticket_id",
             user_id, text, category
@@ -118,11 +126,13 @@ async def get_open_tickets():
 async def set_user_state(user_id: int, state: str):
     conn = await init_db()
     try:
+        await user_in_db(user_id)
         print("Устанавливаем состояние пользователя")
         await conn.execute(
             "UPDATE users SET state = $1 WHERE user_id = $2",
             state, user_id
         )
+        print("ПРОШЛИ")
     except Exception as e:
         logger.error(f"Ошибка при обновлении состояния пользователя {user_id}: {e}")
     finally:
@@ -145,9 +155,9 @@ async def get_user_state(user_id: int):
 async def clear_user_state(user_id: int):
     conn = await init_db()
     try:
-        await conn.execute("UPDATE users SET state = 'cancel', category = NULL WHERE user_id = $1",
+        await conn.execute("UPDATE users SET category = NULL WHERE user_id = $1",
                            user_id)
-        print(f"✅ Состояние пользователя {user_id} изменено на 'cancel'.")
+        print(f"✅ Состояние пользователя {user_id} изменено на 'NULL'.")
     except Exception as e:
         logger.error(f"Ошибка при очистке состояния пользователя {user_id}: {e}")
     finally:
@@ -246,7 +256,7 @@ async def get_user_role(user_id: int):
 async def set_user_role(user_id: int, role: str):
     conn = await init_db()
     try:
-        await conn.execute("UPDATE users SET role = 1$ WHERE user_id = $2", role, user_id)
+        await conn.execute("UPDATE users SET role = $1 WHERE user_id = $2", role, user_id)
     finally:
         await conn.close()
 

@@ -17,7 +17,7 @@ from database import (
     get_user_category,
     create_ticket,
     get_user_tickets,
-    get_operators, is_operator, get_ticket_by_id
+    get_operators, is_operator, get_ticket_by_id, user_in_db
 )
 
 load_dotenv()
@@ -120,11 +120,12 @@ async def ask_category(message: types.Message):
 # Обработчик выбора категории
 @router.callback_query(lambda c: c.data.startswith("category_"))
 async def receive_category(callback_query: CallbackQuery):
+    print(f"ВАЖНО {callback_query.data}")
     category = callback_query.data.split("_")[1]
-
     if category not in VALID_CATEGORIES:
         await callback_query.answer("❌ Ошибка! Неверная категория.")
         return
+
     await set_user_category(callback_query.from_user.id, category)
     await set_user_state(callback_query.from_user.id, "writing_text")
     await callback_query.message.answer("Теперь опишите вашу проблему:")
@@ -135,12 +136,12 @@ async def receive_category(callback_query: CallbackQuery):
 @router.message()
 async def save_ticket(message: types.Message):
     user_id = message.from_user.id
+
     state = await get_user_state(user_id)  # Получаем состояние пользователя
     print(f"1 {state}")
     if state != "writing_text":
         print(f"Пользователь не может писать заявки, {state}")
         return
-    print("2")
     category = await get_user_category(user_id) or "unknown"
     print(f"Категория {category}")
     try:
@@ -174,8 +175,8 @@ async def fallback_handler(message: types.Message):
 async def main():
     await init()
     router.message.middleware(WriteLimit(limit=2.0))
-    dp.include_router(admin_router)
     dp.include_router(router)
+    dp.include_router(admin_router)
 
     await dp.start_polling(bot)
 

@@ -43,7 +43,8 @@ async def create_tables():
                 user_id BIGINT REFERENCES users(user_id),
                 text TEXT,
                 status TEXT DEFAULT 'open',
-                created_at TIMESTAMP DEFAULT NOW()
+                created_at TIMESTAMP DEFAULT NOW(),
+                operator_id BIGINT DEFAULT NULL
             );
         """)
 
@@ -265,6 +266,13 @@ async def set_user_role(user_id: int, role: str):
     finally:
         await conn.close()
 
+async def find_operator_for_ticket(ticket_id: int):
+    conn = await init_db()
+    try:
+        operator_id = await conn.fetchval("SELECT user_id FROM users WHERE state = $1", f"chatting_{ticket_id}")
+        return operator_id
+    finally:
+        await conn.close()
 
 async def add_admin_user(user_id: int, role: str):
     conn = await init_db()

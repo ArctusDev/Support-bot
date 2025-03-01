@@ -11,6 +11,7 @@ from database import (
     init, set_user_state, get_user_state, clear_user_state, set_user_category, get_user_category,
     create_ticket, get_user_tickets, get_operators, is_operator, get_ticket_by_id
 )
+from chat import chat_router
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -32,6 +33,10 @@ def main_menu():
         ],
         resize_keyboard=True, one_time_keyboard=True
     )
+
+# @router.message()
+# async def debug_handler(message: types.Message):
+#     print(f"🔍 bot.py Бот получил сообщение: {message.text} от {message.from_user.id}")
 
 def category_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -108,39 +113,18 @@ async def my_tickets(message: types.Message):
         response += f"🔹 #{ticket['ticket_id']} ({ticket['category']}): {ticket['text'][:100]} {ticket['created_at']}\n"
     await message.answer(response)
 
-@router.message()
-async def relay_messages(message: types.Message):
-    user_id = message.from_user.id
-    state = await get_user_state(user_id)
-
-    if not state or not state.startswith("chatting_"):
-        return
-
-    ticket_id = int(state.split("_")[1])
-    ticket = await get_ticket_by_id(ticket_id)
-    if not ticket:
-        return
-
-    if await is_operator(user_id):
-        target_id = ticket["user_id"]
-        sender = "Оператор"
-    else:
-        target_id = ticket["operator_id"]
-        sender = "Пользователь"
-
-    await bot.send_message(target_id, f"📩 {sender}: {message.text}")
-
-@router.message()
-async def fallback_handler(message: types.Message):
-    user_id = message.from_user.id
-    if await is_operator(user_id):
-        return
-    await message.answer("❌ Я вас не понял. Используйте кнопки в меню.", reply_markup=main_menu())
+# @router.message()
+# async def fallback_handler(message: types.Message):
+#     user_id = message.from_user.id
+#     if await is_operator(user_id):
+#         return
+#     await message.answer("❌ Я вас не понял. Используйте кнопки в меню.", reply_markup=main_menu())
 
 async def main():
     await init()
     dp.include_router(admin_router)
     dp.include_router(router)
+    dp.include_router(chat_router)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':

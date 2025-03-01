@@ -4,13 +4,14 @@ from aiogram import Router, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton, ReplyKeyboardMarkup
 from database import (
     get_all_tickets, update_ticket_status, get_ticket_by_id, set_user_role, get_user_role,
-    add_admin_user, set_user_state, is_operator, get_user_state
+    add_admin_user, set_user_state, is_operator, get_user_state, init_db
 )
 from dotenv import load_dotenv
 
 router = Router()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
+DB_URL = os.getenv("DB_URL")
 
 def admin_keyboard():
     return ReplyKeyboardMarkup(keyboard=[
@@ -42,6 +43,7 @@ async def select_ticket(message: types.Message):
     ticket_id = int(message.text)
 
     ticket = await get_ticket_by_id(ticket_id)
+    print (ticket["user_id"])
     if not ticket:
         await message.answer("❌ Заявка не найдена.")
         return
@@ -50,6 +52,11 @@ async def select_ticket(message: types.Message):
     user_id = ticket["user_id"]
     await set_user_state(operator_id, f"chating_{ticket_id}")
     await set_user_state(user_id, f"chating_{ticket_id}")
+
+    conn = await init_db()
+    await conn.execute("UPDATE tickets SET operator_id = $1 WHERE ticket_id = $2", operator_id, ticket_id)
+    await conn.close()
+
     await message.answer(
         f"✅ Вы выбрали заявку #{ticket_id}. Теперь вы можете общаться с пользователем.\n"
         "Нажмите '✅ Закрыть заявку', когда работа будет завершена.",
@@ -58,17 +65,20 @@ async def select_ticket(message: types.Message):
         ])
     )
 
-    await router.bot.send_message(user_id,
+    await bot.send_message(user_id,
                                   f"🛠 Ваша заявка #{ticket_id} теперь в работе. Оператор свяжется с вами.")
 
 
 @router.callback_query(lambda c: c.data.startswith("close_ticket_"))
 async def close_ticket(callback: types.CallbackQuery):
     ticket_id = int(callback.data.split("_")[2])
-    operator_id = callback.from_user.id
-
     ticket = await get_ticket_by_id(ticket_id)
+    operator_id = callback.from_user.id
+    user_id = ticket["user_id"]
     await update_ticket_status(ticket_id, "закрыта")
     await set_user_state(operator_id, "idle")
+    await set_user_state(user_id, "idle")
 
     await callback.message.answer(f"✅ Заявка #{ticket_id} закрыта.")
+    await bot.send_message(user_id,
+                           f"🛠 Ваша заявка #{ticket_id} закрыта.")

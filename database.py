@@ -227,7 +227,8 @@ async def get_user_tickets(user_id: int):
 async def get_all_tickets():
     conn = await init_db()
     try:
-        return await conn.fetch("SELECT * FROM tickets WHERE status != 'закрыта'")
+        rows =  await conn.fetch("SELECT * FROM tickets WHERE status = 'open'")
+        return rows
     finally:
         await conn.close()
 
@@ -258,6 +259,9 @@ async def set_user_role(user_id: int, role: str):
     conn = await init_db()
     try:
         await conn.execute("UPDATE users SET role = $1 WHERE user_id = $2", role, user_id)
+        print(f"✅ Роль пользователя {user_id} изменена на {role}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка при обновлении роли пользователя {user_id}: {e}")
     finally:
         await conn.close()
 

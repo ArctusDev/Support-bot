@@ -5,7 +5,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 from aiogram.filters import Command
 import logging
 from dotenv import load_dotenv
-from admin import router as admin_router
+from admin import admin_router
 from admin import admin_keyboard
 from database import (
     init, set_user_state, get_user_state, clear_user_state, set_user_category, get_user_category,
@@ -118,12 +118,14 @@ async def my_tickets(message: types.Message):
 #     user_id = message.from_user.id
 #     if await is_operator(user_id):
 #         return
-#     await message.answer("❌ Я вас не понял. Используйте кнопки в меню.", reply_markup=main_menu())
+#     state = await get_user_state(user_id)
+#     if not state.startswith("chating_"):
+#         await message.answer("❌ Я вас не понял. Используйте кнопки в меню.", reply_markup=main_menu())
 
 async def main():
     await init()
-    dp.include_router(admin_router)
     dp.include_router(router)
+    dp.include_router(admin_router)
     dp.include_router(chat_router)
     await dp.start_polling(bot)
 

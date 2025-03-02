@@ -4,11 +4,11 @@ from aiogram import Router, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton, ReplyKeyboardMarkup
 from database import (
     get_all_tickets, update_ticket_status, get_ticket_by_id, set_user_role, get_user_role,
-    add_admin_user, set_user_state, is_operator, get_user_state, init_db
+    add_admin_user, set_user_state, is_operator, get_user_state, init_db, clear_user_state
 )
 from dotenv import load_dotenv
 
-router = Router()
+admin_router = Router()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=BOT_TOKEN)
 DB_URL = os.getenv("DB_URL")
@@ -20,7 +20,8 @@ def admin_keyboard():
     ], resize_keyboard=True, one_time_keyboard=True)
 
 
-@router.message(lambda msg: msg.text == "📋 Все заявки")
+
+@admin_router.message(lambda msg: msg.text == "📋 Все заявки")
 async def view_open_tickets(message: types.Message):
     user_id = message.from_user.id
     if not await is_operator(user_id):
@@ -32,16 +33,19 @@ async def view_open_tickets(message: types.Message):
     text = "📋 Открытые заявки:\n\n"
     for ticket in tickets:
         text += f"🆔 {ticket['ticket_id']} | 👤 {ticket['user_id']}\n📩 {ticket['text'][:100]}\n\n"
-
     await message.answer(text)
+    await set_user_state(user_id, f"select_ticket")
     await message.answer("Введите ID заявки, чтобы начать работу с ней:")
 
 
-@router.message(lambda msg: msg.text.isdigit())
+@admin_router.message(lambda msg: msg.text.isdigit())
 async def select_ticket(message: types.Message):
     operator_id = message.from_user.id
+    state = await get_user_state(operator_id)
+    if state != "select_ticket":
+        print('!!!!!!!!!!!')
+        return
     ticket_id = int(message.text)
-
     ticket = await get_ticket_by_id(ticket_id)
     print (ticket["user_id"])
     if not ticket:
@@ -69,7 +73,7 @@ async def select_ticket(message: types.Message):
                                   f"🛠 Ваша заявка #{ticket_id} теперь в работе. Оператор свяжется с вами.")
 
 
-@router.callback_query(lambda c: c.data.startswith("close_ticket_"))
+@admin_router.callback_query(lambda c: c.data.startswith("close_ticket_"))
 async def close_ticket(callback: types.CallbackQuery):
     ticket_id = int(callback.data.split("_")[2])
     ticket = await get_ticket_by_id(ticket_id)
@@ -82,3 +86,87 @@ async def close_ticket(callback: types.CallbackQuery):
     await callback.message.answer(f"✅ Заявка #{ticket_id} закрыта.")
     await bot.send_message(user_id,
                            f"🛠 Ваша заявка #{ticket_id} закрыта.")
+
+
+
+
+
+
+@admin_router.message(lambda msg: msg.text == "👤 Добавить оператора")
+async def add_operator_request(message: types.Message):
+    print('Оператор нажал кнопку добавить оператора')
+    operator_id = message.from_user.id
+    if not await is_operator(operator_id):
+        return
+    await set_user_state(operator_id, "wating_for_operator_id")
+    await message.answer("Введите ID пользователя")
+
+@admin_router.message(lambda msg: msg.text.isdigit())
+async def confirm_operator(message: types.Message):
+    operator_id = message.from_user.id
+    print(operator_id)
+    state = await get_user_state(operator_id)
+    if state != "wating_for_operator_id":
+        print('!!!!!!!!!!!')
+        return
+    target_user_id = message.text.strip()
+
+    if not target_user_id.isdigit():
+        await message.answer("⚠️ Ошибка! Введите корректный ID пользователя (число).")
+        return
+
+    target_user_id = int(target_user_id)
+    user_role = await get_user_role(target_user_id)
+
+    if user_role == "operator":
+        await message.answer("⚠️ Этот пользователь уже является оператором.")
+        await set_user_state(operator_id, "idle")
+        return
+
+    # ✅ Записываем состояние с ID пользователя
+    await set_user_state(operator_id, f"confirm_operator_{target_user_id}")
+
+    # Кнопки подтверждения
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_operator_{target_user_id}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_operator")]
+    ])
+
+    await message.answer(
+        f"⚠️ Вы уверены, что хотите сделать пользователя {target_user_id} оператором?",
+        reply_markup=keyboard, parse_mode="Markdown"
+    )
+
+
+@admin_router.callback_query(lambda c: c.data.startswith("confirm_operator_"))
+async def process_operator_confirmation(callback: types.CallbackQuery):
+    """Подтверждение назначения оператора"""
+    admin_id = callback.from_user.id
+    target_user_id = int(callback.data.split("_")[2])
+
+    user_role = await get_user_role(target_user_id)
+
+    if user_role is None:
+        await add_admin_user(target_user_id, "operator")
+    else:
+        await set_user_role(target_user_id, "operator")
+
+    await set_user_state(target_user_id, "idle")  # Очищаем состояние у нового оператора
+    await set_user_state(admin_id, "idle")  # Очищаем состояние у текущего оператора
+
+    await callback.message.edit_text(f"✅ Пользователь {target_user_id} теперь оператор.")
+
+    # Обновляем меню нового оператора
+    await bot.send_message(
+        target_user_id,
+        "🎉 Вас назначили оператором! Теперь у вас есть доступ к управлению заявками.",
+        reply_markup=admin_keyboard()
+    )
+
+
+@admin_router.callback_query(lambda c: c.data == "cancel_operator")
+async def cancel_operator(callback: types.CallbackQuery):
+    """Отмена добавления оператора"""
+    admin_id = callback.from_user.id
+    await clear_user_state(admin_id)  # Очищаем состояние
+    await callback.message.edit_text("❌ Операция отменена.")

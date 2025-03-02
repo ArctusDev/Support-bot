@@ -38,40 +38,6 @@ async def view_open_tickets(message: types.Message):
     await message.answer("Введите ID заявки, чтобы начать работу с ней:")
 
 
-@admin_router.message(lambda msg: msg.text.isdigit())
-async def select_ticket(message: types.Message):
-    operator_id = message.from_user.id
-    state = await get_user_state(operator_id)
-    if state != "select_ticket":
-        print('!!!!!!!!!!!')
-        return
-    ticket_id = int(message.text)
-    ticket = await get_ticket_by_id(ticket_id)
-    print (ticket["user_id"])
-    if not ticket:
-        await message.answer("❌ Заявка не найдена.")
-        return
-    await update_ticket_status(ticket_id, "в работе")
-    await set_user_state(operator_id, f"working_on_ticket_{ticket_id}")
-    user_id = ticket["user_id"]
-    await set_user_state(operator_id, f"chating_{ticket_id}")
-    await set_user_state(user_id, f"chating_{ticket_id}")
-
-    conn = await init_db()
-    await conn.execute("UPDATE tickets SET operator_id = $1 WHERE ticket_id = $2", operator_id, ticket_id)
-    await conn.close()
-
-    await message.answer(
-        f"✅ Вы выбрали заявку #{ticket_id}. Теперь вы можете общаться с пользователем.\n"
-        "Нажмите '✅ Закрыть заявку', когда работа будет завершена.",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Закрыть заявку", callback_data=f"close_ticket_{ticket_id}")]
-        ])
-    )
-
-    await bot.send_message(user_id,
-                                  f"🛠 Ваша заявка #{ticket_id} теперь в работе. Оператор свяжется с вами.")
-
 
 @admin_router.callback_query(lambda c: c.data.startswith("close_ticket_"))
 async def close_ticket(callback: types.CallbackQuery):
@@ -88,10 +54,6 @@ async def close_ticket(callback: types.CallbackQuery):
                            f"🛠 Ваша заявка #{ticket_id} закрыта.")
 
 
-
-
-
-
 @admin_router.message(lambda msg: msg.text == "👤 Добавить оператора")
 async def add_operator_request(message: types.Message):
     print('Оператор нажал кнопку добавить оператора')
@@ -106,37 +68,75 @@ async def confirm_operator(message: types.Message):
     operator_id = message.from_user.id
     print(operator_id)
     state = await get_user_state(operator_id)
-    if state != "wating_for_operator_id":
-        print('!!!!!!!!!!!')
-        return
-    target_user_id = message.text.strip()
+    if state == "wating_for_operator_id":
+        print('11111!!!!!!!!!!!')
 
-    if not target_user_id.isdigit():
-        await message.answer("⚠️ Ошибка! Введите корректный ID пользователя (число).")
-        return
+        target_user_id = message.text.strip()
 
-    target_user_id = int(target_user_id)
-    user_role = await get_user_role(target_user_id)
+        if not target_user_id.isdigit():
+            await message.answer("⚠️ Ошибка! Введите корректный ID пользователя (число).")
+            return
 
-    if user_role == "operator":
-        await message.answer("⚠️ Этот пользователь уже является оператором.")
-        await set_user_state(operator_id, "idle")
-        return
+        target_user_id = int(target_user_id)
+        user_role = await get_user_role(target_user_id)
+        if not await get_user_role(target_user_id):
+            await message.answer("⚠️ Не найден пользователь.")
+            return
 
-    # ✅ Записываем состояние с ID пользователя
-    await set_user_state(operator_id, f"confirm_operator_{target_user_id}")
+        if user_role == "operator":
+            await message.answer("⚠️ Этот пользователь уже является оператором.")
+            await set_user_state(operator_id, "idle")
+            return
 
-    # Кнопки подтверждения
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_operator_{target_user_id}")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_operator")]
-    ])
+        # ✅ Записываем состояние с ID пользователя
+        await set_user_state(operator_id, f"confirm_operator_{target_user_id}")
 
-    await message.answer(
-        f"⚠️ Вы уверены, что хотите сделать пользователя {target_user_id} оператором?",
-        reply_markup=keyboard, parse_mode="Markdown"
-    )
+        # Кнопки подтверждения
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_operator_{target_user_id}")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_operator")]
+        ])
 
+        await message.answer(
+            f"⚠️ Вы уверены, что хотите сделать пользователя {target_user_id} оператором?",
+            reply_markup=keyboard, parse_mode="Markdown"
+        )
+    elif state == "select_ticket":
+        operator_id = message.from_user.id
+        print('22222!!!!!!!!!!!')
+        ticket_id = int(message.text)
+        ticket = await get_ticket_by_id(ticket_id)
+        print(ticket["user_id"])
+        if not ticket:
+            await message.answer("❌ Заявка не найдена.")
+            return
+        await update_ticket_status(ticket_id, "в работе")
+        await set_user_state(operator_id, f"working_on_ticket_{ticket_id}")
+        user_id = ticket["user_id"]
+        await set_user_state(operator_id, f"chating_{ticket_id}")
+        await set_user_state(user_id, f"chating_{ticket_id}")
+
+        conn = await init_db()
+        await conn.execute("UPDATE tickets SET operator_id = $1 WHERE ticket_id = $2", operator_id, ticket_id)
+        await conn.close()
+
+        await message.answer(
+            f"✅ Вы выбрали заявку #{ticket_id}. Теперь вы можете общаться с пользователем.\n"
+            "Нажмите '✅ Закрыть заявку', когда работа будет завершена.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="✅ Закрыть заявку", callback_data=f"close_ticket_{ticket_id}")]
+            ])
+        )
+
+        await bot.send_message(user_id,
+                               f"🛠 Ваша заявка #{ticket_id} теперь в работе. Оператор свяжется с вами.")
+    else:
+        user_id = message.from_user.id
+        if await is_operator(user_id):
+            return
+        state = await get_user_state(user_id)
+        if not state.startswith("chating_"):
+            await message.answer("❌ Я вас не понял. Используйте кнопки в меню.")
 
 @admin_router.callback_query(lambda c: c.data.startswith("confirm_operator_"))
 async def process_operator_confirmation(callback: types.CallbackQuery):

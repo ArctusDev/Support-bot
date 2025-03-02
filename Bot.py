@@ -9,7 +9,7 @@ from admin import admin_router
 from admin import admin_keyboard
 from database import (
     init, set_user_state, get_user_state, clear_user_state, set_user_category, get_user_category,
-    create_ticket, get_user_tickets, get_operators, is_operator, get_ticket_by_id
+    create_ticket, get_user_tickets, is_operator
 )
 from chat import chat_router
 

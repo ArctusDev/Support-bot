@@ -3,6 +3,7 @@ import os
 from aiogram import Bot, Dispatcher, types, Router
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
+from aiogram.exceptions import TelegramBadRequest
 import logging
 from dotenv import load_dotenv
 from admin import admin_router
@@ -15,6 +16,8 @@ from chat import chat_router
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHANNEL_ID = os.getenv("CHANNEL_ID")
+CHANNEL_URL = os.getenv("CHANNEL_URL")
 
 logging.basicConfig(level=logging.INFO, filename="bot_errors.log", filemode="a",
                     format="%(asctime)s - %(levelname)s - %(message)s", encoding='utf-8')
@@ -25,6 +28,17 @@ router = Router()
 
 VALID_CATEGORIES = {"error", "suggestion", "question"}
 
+# Проверка подписки на канал
+async def is_user_subscribed(user_id: int) -> bool:
+    try:
+        chat_member = await bot.get_chat_member(CHANNEL_ID, user_id)
+        print(CHANNEL_ID)
+        print(chat_member)
+        return chat_member.status in ["member", "administrator", "creator"]
+    except TelegramBadRequest:
+        print('FALSE')
+        return False
+
 def main_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -33,10 +47,6 @@ def main_menu():
         ],
         resize_keyboard=True, one_time_keyboard=True
     )
-
-# @router.message()
-# async def debug_handler(message: types.Message):
-#     print(f"🔍 bot.py Бот получил сообщение: {message.text} от {message.from_user.id}")
 
 def category_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -49,10 +59,32 @@ def category_keyboard():
 @router.message(Command("start"))
 async def start_command(message: types.Message):
     user_id = message.from_user.id
+
+    if not await is_user_subscribed(user_id):
+        await message.answer(
+            "🔔 Для использования бота вам нужно подписаться на канал:",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="📢 Перейти в канал", url=f"https://t.me/{CHANNEL_URL}")],
+                [InlineKeyboardButton(text="✅ Я подписался!", callback_data="check_subscription")]
+            ])
+        )
+        return  # Не даём пользоваться ботом, пока не подпишется)
+
     if await is_operator(user_id):
         await message.answer("👋 Привет, оператор! Выберите действие:", reply_markup=admin_keyboard())
     else:
         await message.answer("👋 Привет! Выберите действие:", reply_markup=main_menu())
+
+@router.callback_query(lambda c: c.data == "check_subscription")
+async def check_subscription(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+
+    if await is_user_subscribed(user_id):
+        await callback_query.message.edit_text("✅ Подписка подтверждена!")
+        await start_command(callback_query.message)    # Перезапуск start
+    else:
+        await callback_query.answer("❌ Вы ещё не подписаны!", show_alert=True)
+
 
 @router.callback_query(lambda c: c.data == "cancel_ticket")
 async def cancel_ticket(callback_query: CallbackQuery):

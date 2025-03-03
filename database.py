@@ -9,12 +9,10 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 DB_URL = os.getenv("DB_URL")
 
-# Логирование
-
-
 async def init_db():
     return await asyncpg.connect(DB_URL)
 
+## Функция для проверки подключения
 # async def test_db():
 #     try:
 #         conn = await asyncpg.connect(DB_URL)
@@ -48,14 +46,6 @@ async def create_tables():
             );
         """)
 
-        # await conn.execute("""
-        #     CREATE TABLE IF NOT EXISTS user_states (
-        #         user_id BIGINT PRIMARY KEY,
-        #         state TEXT,
-        #         category TEXT DEFAULT NULL
-        #     );
-        # """)
-
         print('Таблицы успешно созданы!')
     except Exception as e:
         logger.error(f"Ошибка при создании таблиц: {e}")
@@ -65,15 +55,6 @@ async def create_tables():
 async def init():
     await create_tables()
 
-
-# Добавляем пользователя, если его нет
-# async def add_user(user_id: int, role: str = 'user', state: str):
-#     conn = await init_db()
-#     await conn.execute(
-#         "INSERT INTO users (user_id, role, state) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO NOTHING",
-#         user_id, role, state
-#     )
-#     await conn.close()
 
 async def user_in_db(user_id: int):
     conn = await init_db()
@@ -112,16 +93,6 @@ async def get_open_tickets():
     )
     await conn.close()
     return tickets
-
-
-# async def update_ticket_status(ticket_id: int, status: str):
-#     conn = await init_db()
-#     await conn.execute(
-#         "UPDATE tickets SET status = $1 WHERE ticket_id = $2",
-#         status, ticket_id
-#     )
-#     await conn.close()
-
 
 # Записываем состояние пользователя в БД
 async def set_user_state(user_id: int, state: str):

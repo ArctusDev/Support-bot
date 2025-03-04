@@ -14,7 +14,6 @@ class WriteLimit(BaseMiddleware):
     async def __call__(self, handler, event: types.Message, data):
         user_id = event.from_user.id
         current_time = asyncio.get_event_loop().time()
-        print("Пункт 1")
         # Проблема с кнопкой /start
         # if event.text and (event.text.startswith ("/start") or event.text.startswith ("/help")):
         #     print(f"Пропускаем команду {event.text}")

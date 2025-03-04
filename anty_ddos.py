@@ -6,7 +6,7 @@ from aiogram.dispatcher.middlewares.base import BaseMiddleware
 logger = logging.getLogger(__name__)
 
 class WriteLimit(BaseMiddleware):
-    def __init__(self, limit: float = 2.0):
+    def __init__(self, limit: float = 5.0):
         super().__init__()
         self.limit = limit
         self.users = {}
@@ -16,9 +16,9 @@ class WriteLimit(BaseMiddleware):
         current_time = asyncio.get_event_loop().time()
         print("Пункт 1")
         # Проблема с кнопкой /start
-        if event.text and (event.text.startswith ("/start") or event.text.startswith ("/help")):
-            print(f"Пропускаем команду {event.text}")
-            return await handler(event, data)
+        # if event.text and (event.text.startswith ("/start") or event.text.startswith ("/help")):
+        #     print(f"Пропускаем команду {event.text}")
+        #     return await handler(event, data)
         # Если пользователь уже отправлял команду недавно
         if user_id in self.users and (current_time - self.users[user_id]) < self.limit:
             logger.warning(f"Пользователь {user_id} превышает лимит команд!")

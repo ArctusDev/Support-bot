@@ -8,6 +8,7 @@ import logging
 from dotenv import load_dotenv
 from admin import admin_router
 from admin import admin_keyboard
+from anty_ddos import WriteLimit
 from database import (
     init, set_user_state, get_user_state, clear_user_state, set_user_category, get_user_category,
     create_ticket, get_user_tickets, is_operator
@@ -99,15 +100,15 @@ async def help_command(message: types.Message):
                          "1️⃣ Нажмите '📩 Создать заявку'\n"
                          "2️⃣ Выберите категорию\n"
                          "3️⃣ Опишите проблему\n"
-                         "4️⃣ Дождитесь ответа оператора.")
+                         "4️⃣ Дождитесь ответа оператора.", reply_markup=main_menu())
 
 @router.message(lambda message: message.text == "📩 Создать заявку")
 async def create_ticket_button(message: types.Message):
-    if await is_operator(message.from_user.id):
-        await message.answer("Вы оператор, вы не можете создавать заявки.")
-    else:
-        await message.answer("Выберите тип обращения:", reply_markup=category_keyboard())
-        await set_user_state(message.from_user.id, "choosing_category")
+    # if await is_operator(message.from_user.id):
+    #     await message.answer("Вы оператор, вы не можете создавать заявки.")
+    # else:
+    await message.answer("Выберите тип обращения:", reply_markup=category_keyboard())
+    await set_user_state(message.from_user.id, "choosing_category")
 
 @router.callback_query(lambda c: c.data.startswith("category_"))
 async def receive_category(callback_query: CallbackQuery):
@@ -123,9 +124,41 @@ async def receive_category(callback_query: CallbackQuery):
 @router.message(lambda message: asyncio.run(get_user_state(message.from_user.id)) == "writing_text")
 async def save_ticket(message: types.Message):
     user_id = message.from_user.id
+    if message.text:
+        text = message.text.strip()
+    elif message.caption:
+        text = message.caption.strip()
+    else:
+        text = ""
+
+    if text == '📜 Мои заявки' or text == '📩 Создать заявку' or text == 'ℹ️ Помощь':
+        await message.answer("❌ Ошибка при создании тикета")
+        await set_user_state(user_id, state='idle')
+        return
+
+    print(text)
+    if message.animation:
+        await message.answer("❌ Ошибка при создании тикета, нельзя отправлять анимации")
+        await set_user_state(user_id, state='idle')
+        return
+    # Если там картинка
+    if text and message.photo:
+        file_id = message.photo[-1].file_id
+        file_info = await bot.get_file(file_id)
+        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+        text = f"{text}. Фото: {file_url}"
+    elif message.photo:
+        file_id = message.photo[-1].file_id
+        file_info = await bot.get_file(file_id)
+        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+        text = f"Фото-заявка: {file_url}"
+
+    if not text and message.photo:
+        await message.answer("❌ Нельзя создать пустую заявку.")
+        return
     category = await get_user_category(user_id) or "unknown"
     try:
-        ticket_id = await create_ticket(user_id, message.text, category)
+        ticket_id = await create_ticket(user_id, text, category)
         await message.answer(f"✅ Ваша заявка #{ticket_id} принята!")
         await set_user_state(user_id, state='open')
         await clear_user_state(user_id)
@@ -138,7 +171,7 @@ async def my_tickets(message: types.Message):
     user_id = message.from_user.id
     tickets = await get_user_tickets(user_id)
     if not tickets:
-        await message.answer("📜 У вас пока нет заявок.")
+        await message.answer("📜 У вас пока нет заявок.", reply_markup=main_menu())
         return
     response = "📜 Ваши заявки:\n\n"
     for ticket in tickets[:]:
@@ -156,6 +189,8 @@ async def my_tickets(message: types.Message):
 
 async def main():
     await init()
+    router.message.middleware(WriteLimit(limit=3.0))
+
     dp.include_router(router)
     dp.include_router(admin_router)
     dp.include_router(chat_router)

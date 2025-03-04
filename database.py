@@ -104,7 +104,7 @@ async def set_user_state(user_id: int, state: str):
             "UPDATE users SET state = $1 WHERE user_id = $2",
             state, user_id
         )
-        print("ПРОШЛИ")
+        print(f"Установлено состояние пользователя {user_id} : {state}")
     except Exception as e:
         logger.error(f"Ошибка при обновлении состояния пользователя {user_id}: {e}")
     finally:

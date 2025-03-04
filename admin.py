@@ -38,7 +38,6 @@ async def view_open_tickets(message: types.Message):
     await message.answer("Введите ID заявки, чтобы начать работу с ней:")
 
 
-
 @admin_router.callback_query(lambda c: c.data.startswith("close_ticket_"))
 async def close_ticket(callback: types.CallbackQuery):
     ticket_id = int(callback.data.split("_")[2])
@@ -69,8 +68,6 @@ async def confirm_operator(message: types.Message):
     print(operator_id)
     state = await get_user_state(operator_id)
     if state == "wating_for_operator_id":
-        print('11111!!!!!!!!!!!')
-
         target_user_id = message.text.strip()
 
         if not target_user_id.isdigit():
@@ -103,7 +100,6 @@ async def confirm_operator(message: types.Message):
         )
     elif state == "select_ticket":
         operator_id = message.from_user.id
-        print('22222!!!!!!!!!!!')
         ticket_id = int(message.text)
         ticket = await get_ticket_by_id(ticket_id)
         print(ticket["user_id"])

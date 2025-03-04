@@ -62,7 +62,7 @@ async def add_operator_request(message: types.Message):
     await set_user_state(operator_id, "wating_for_operator_id")
     await message.answer("Введите ID пользователя")
 
-@admin_router.message(lambda msg: msg.text.isdigit())
+@admin_router.message(lambda msg: msg.text and msg.text.isdigit())
 async def confirm_operator(message: types.Message):
     operator_id = message.from_user.id
     print(operator_id)

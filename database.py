@@ -85,14 +85,6 @@ async def create_ticket(user_id: int, text: str, category: str):
     finally:
         await conn.close()           # Возвращает id заявки
 
-# Получаем список открытых заявок
-async def get_open_tickets():
-    conn = await init_db()
-    tickets = await conn.fetch(
-        "SELECT * FROM tickets WHERE status = 'open'"
-    )
-    await conn.close()
-    return tickets
 
 # Записываем состояние пользователя в БД
 async def set_user_state(user_id: int, state: str):
@@ -145,16 +137,6 @@ async def is_operator(user_id):
         await conn.close()
     return False
 
-async def get_operators():
-    conn = await init_db()
-    operators = []
-    try:
-        operators = await conn.fetch("SELECT user_id FROM users WHERE role = 'operator'")
-    except:
-        logger.error("Ошибка при чтении операторов из БД")
-    finally:
-        await conn.close()
-    return operators
 
 # Сохраняем выбранную категорию в БД
 async def set_user_category(user_id: int, category: str):
@@ -240,7 +222,7 @@ async def set_user_role(user_id: int, role: str):
 async def find_operator_for_ticket(ticket_id: int):
     conn = await init_db()
     try:
-        operator_id = await conn.fetchval("SELECT user_id FROM users WHERE state = $1", f"chatting_{ticket_id}")
+        operator_id = await conn.fetchval("SELECT user_id FROM users WHERE state = $1", f"chating_{ticket_id}")
         return operator_id
     finally:
         await conn.close()

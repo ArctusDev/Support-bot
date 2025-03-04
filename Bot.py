@@ -220,14 +220,6 @@ async def my_tickets(message: types.Message):
         response += f"🔹 #{ticket['ticket_id']} ({ticket['category']}): {ticket['text'][:100]} {ticket['created_at']}\n"
     await message.answer(response)
 
-# @router.message()
-# async def fallback_handler(message: types.Message):
-#     user_id = message.from_user.id
-#     if await is_operator(user_id):
-#         return
-#     state = await get_user_state(user_id)
-#     if not state.startswith("chating_"):
-#         await message.answer("❌ Я вас не понял. Используйте кнопки в меню.", reply_markup=main_menu())
 
 async def main():
     await init()

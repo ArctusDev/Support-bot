@@ -1,11 +1,14 @@
 import asyncio
 import os
 from aiogram import Bot, Dispatcher, types, Router
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import (InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ReplyKeyboardMarkup,
+                           KeyboardButton)
 from aiogram.filters import Command
 from aiogram.exceptions import TelegramBadRequest
 import logging
 from dotenv import load_dotenv
+from setuptools.command.build_ext import use_stubs
+
 from admin import admin_router
 from admin import admin_keyboard
 from anty_ddos import WriteLimit
@@ -96,6 +99,12 @@ async def cancel_ticket(callback_query: CallbackQuery):
 
 @router.message(lambda message: message.text == "ℹ️ Помощь")
 async def help_command(message: types.Message):
+    user_id = message.from_user.id
+    state = await get_user_state(user_id)
+    print(state)
+    if state.startswith("chating_"):
+        await message.answer("⚠️Вы находитесь в чате с оператором")
+        return
     await message.answer("ℹ️ Как создать заявку?\n\n"
                          "1️⃣ Нажмите '📩 Создать заявку'\n"
                          "2️⃣ Выберите категорию\n"
@@ -104,9 +113,12 @@ async def help_command(message: types.Message):
 
 @router.message(lambda message: message.text == "📩 Создать заявку")
 async def create_ticket_button(message: types.Message):
-    # if await is_operator(message.from_user.id):
-    #     await message.answer("Вы оператор, вы не можете создавать заявки.")
-    # else:
+    user_id = message.from_user.id
+    state = await get_user_state(user_id)
+    print(state)
+    if state.startswith("chating_"):
+        await message.answer("⚠️Вы находитесь в чате с оператором")
+        return
     await message.answer("Выберите тип обращения:", reply_markup=category_keyboard())
     await set_user_state(message.from_user.id, "choosing_category")
 
@@ -131,30 +143,60 @@ async def save_ticket(message: types.Message):
     else:
         text = ""
 
+    print(text)
+
     if text == '📜 Мои заявки' or text == '📩 Создать заявку' or text == 'ℹ️ Помощь':
         await message.answer("❌ Ошибка при создании тикета")
         await set_user_state(user_id, state='idle')
         return
-
-    print(text)
     if message.animation:
         await message.answer("❌ Ошибка при создании тикета, нельзя отправлять анимации")
         await set_user_state(user_id, state='idle')
         return
-    # Если там картинка
+    if message.audio:
+        await message.answer("❌ Ошибка при создании тикета, нельзя отправлять аудио")
+        await set_user_state(user_id, state='idle')
+        return
+
+    # Если группа файлов (фото + видео)
+    if message.media_group_id:
+        await message.answer("❌ Ошибка. Пожалуйста, присылайте по одному файлу с описанием проблемы.")
+        await set_user_state(user_id, state='idle')
+        return
+    # Если там фото, видео или документ
     if text and message.photo:
         file_id = message.photo[-1].file_id
         file_info = await bot.get_file(file_id)
         file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
-        text = f"{text}. Фото: {file_url}"
+        text += f". Фото: {file_url}"
+    elif text and message.video:
+        file_id = message.video.file_id
+        file_info = await bot.get_file(file_id)
+        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+        text += f". Видео: {file_url}"
+    elif text and message.document:
+        file_id = message.document.file_id
+        file_info = await bot.get_file(file_id)
+        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+        text += f". Документ: {file_url}"
+    elif message.document:
+        file_id = message.document.file_id
+        file_info = await bot.get_file(file_id)
+        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+        text = f"Документ: {file_url}"
+    elif message.video:
+        file_id = message.video.file_id
+        file_info = await bot.get_file(file_id)
+        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+        text = f"Видео-заявка: {file_url}"
     elif message.photo:
         file_id = message.photo[-1].file_id
         file_info = await bot.get_file(file_id)
         file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
         text = f"Фото-заявка: {file_url}"
 
-    if not text and message.photo:
-        await message.answer("❌ Нельзя создать пустую заявку.")
+    if not text:
+        await message.answer("❌ Создана пустая заявка или недопустимый формат файлов.")
         return
     category = await get_user_category(user_id) or "unknown"
     try:

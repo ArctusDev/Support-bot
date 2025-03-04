@@ -1,9 +1,8 @@
 from aiogram import Router, types
-from database import get_user_state, get_ticket_by_id, is_operator, find_operator_for_ticket
+from database import get_user_state, get_ticket_by_id, is_operator
 
 
 chat_router = Router()
-
 
 @chat_router.message()
 async def relay_messages(message: types.Message):
@@ -30,4 +29,19 @@ async def relay_messages(message: types.Message):
         sender = "Пользователь"
     print("общение 2")
     from Bot import bot
-    await bot.send_message(target_id, f"📩 {sender}: {message.text}")
+    # if message.text and message.video:
+    #     await bot.send_video(target_id, f"📩 {sender}:", message.text, message.video.file_id, caption=message.caption)
+    # elif message.text and message.photo:
+    #     await bot.send_message(target_id, f"📩 {sender}:", message.text, message.photo[-1], caption=message.caption)
+    # elif message.text and message.document:
+    #     await bot.send_message(target_id, f"📩 {sender}:", message.text, message.document.file_id, caption=message.caption)
+    # elif message.video:
+    #     await bot.send_message(target_id, f"📩 {sender}:", message.video.file_id, caption=message.caption)
+    # elif message.document:
+    #     await bot.send_message(target_id, f"📩 {sender}:", message.document.file_id, caption=message.caption)
+    # if message.photo:
+    #     await bot.send_photo(target_id, f"📩 {sender}:", message.photo[-1], caption=message.caption)
+    elif message.text:
+        await bot.send_message(target_id, f"📩 {sender}: {message.text}")
+    else:
+        await message.answer("❌ Недопустимый формат файла")

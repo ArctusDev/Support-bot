@@ -41,7 +41,7 @@ async def relay_messages(message: types.Message):
     #     await bot.send_message(target_id, f"📩 {sender}:", message.document.file_id, caption=message.caption)
     # if message.photo:
     #     await bot.send_photo(target_id, f"📩 {sender}:", message.photo[-1], caption=message.caption)
-    elif message.text:
+    if message.text:
         await bot.send_message(target_id, f"📩 {sender}: {message.text}")
     else:
         await message.answer("❌ Недопустимый формат файла")

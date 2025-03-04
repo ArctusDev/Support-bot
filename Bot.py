@@ -183,7 +183,7 @@ async def save_ticket(message: types.Message):
         file_id = message.document.file_id
         file_info = await bot.get_file(file_id)
         file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
-        text = f"Документ: {file_url}"
+        text = f"Файл: {file_url}"
     elif message.video:
         file_id = message.video.file_id
         file_info = await bot.get_file(file_id)

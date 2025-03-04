@@ -79,6 +79,7 @@ async def start_command(message: types.Message):
     else:
         await message.answer("👋 Привет! Выберите действие:", reply_markup=main_menu())
 
+
 @router.callback_query(lambda c: c.data == "check_subscription")
 async def check_subscription(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
@@ -96,6 +97,7 @@ async def cancel_ticket(callback_query: CallbackQuery):
     await clear_user_state(user_id)
     await callback_query.message.edit_text("❌ Вы отменили создание заявки.")
     await callback_query.answer()
+
 
 @router.message(lambda message: message.text == "ℹ️ Помощь")
 async def help_command(message: types.Message):
@@ -142,8 +144,6 @@ async def save_ticket(message: types.Message):
         text = message.caption.strip()
     else:
         text = ""
-
-    print(text)
 
     if text == '📜 Мои заявки' or text == '📩 Создать заявку' or text == 'ℹ️ Помощь':
         await message.answer("❌ Ошибка при создании тикета")

@@ -74,8 +74,11 @@ async def start_command(message: types.Message):
         return  # Не даём пользоваться ботом, пока не подпишется)
 
     if await is_operator(user_id):
+        await set_user_state(user_id, state='idle')
         await message.answer("👋 Привет, оператор! Выберите действие:", reply_markup=admin_keyboard())
     else:
+        await user_in_db(user_id)
+        await set_user_state(user_id, state='idle')
         await message.answer("👋 Привет! Выберите действие:", reply_markup=main_menu())
 
 
@@ -115,7 +118,6 @@ async def help_command(message: types.Message):
 @router.message(lambda message: message.text == "📩 Создать заявку")
 async def create_ticket_button(message: types.Message):
     user_id = message.from_user.id
-    await user_in_db(user_id)
     state = await get_user_state(user_id)
     print(state)
     if state.startswith("chating_"):

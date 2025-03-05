@@ -167,7 +167,7 @@ async def get_user_category(user_id: int):
 async def get_user_tickets(user_id: int):
     conn = await init_db()
     try:
-        rows = await conn.fetch("SELECT ticket_id, category, text, created_at FROM tickets WHERE user_id = $1 and status = 'open' ORDER BY created_at DESC", user_id)
+        rows = await conn.fetch("SELECT ticket_id, category, text, created_at, status FROM tickets WHERE (user_id = $1 and status = 'open') or (user_id = $1 and  status ='в работе') ORDER BY created_at DESC", user_id)
         print(f"{rows}")
         return rows  # Возвращаем список тикетов
     except Exception as e:
@@ -181,7 +181,7 @@ async def get_user_tickets(user_id: int):
 async def get_all_tickets():
     conn = await init_db()
     try:
-        rows =  await conn.fetch("SELECT * FROM tickets WHERE status = 'open'")
+        rows =  await conn.fetch("SELECT * FROM tickets WHERE status = 'open' or status = 'в работе'")
         return rows
     finally:
         await conn.close()

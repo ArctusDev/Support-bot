@@ -32,7 +32,7 @@ async def view_open_tickets(message: types.Message):
         return
     text = "📋 Открытые заявки:\n\n"
     for ticket in tickets:
-        text += f"🆔 {ticket['ticket_id']} | 👤 {ticket['user_id']}\n📩 {ticket['text'][:100]}\n\n"
+        text += f"🆔 {ticket['ticket_id']} | {ticket['status']} | 👤 {ticket['user_id']}\n📩 {ticket['text'][:100]}\n\n"
     await message.answer(text)
     await set_user_state(user_id, f"select_ticket")
     await message.answer("Введите ID заявки, чтобы начать работу с ней:")
@@ -115,7 +115,7 @@ async def confirm_operator(message: types.Message):
         conn = await init_db()
         await conn.execute("UPDATE tickets SET operator_id = $1 WHERE ticket_id = $2", operator_id, ticket_id)
         await conn.close()
-
+        await update_ticket_status(ticket_id, "в работе")
         await message.answer(
             f"✅ Вы выбрали заявку #{ticket_id}. Теперь вы можете общаться с пользователем.\n"
             "Нажмите '✅ Закрыть заявку', когда работа будет завершена.",

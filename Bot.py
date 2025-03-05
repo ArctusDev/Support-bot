@@ -219,7 +219,7 @@ async def my_tickets(message: types.Message):
         return
     response = "📜 Ваши заявки:\n\n"
     for ticket in tickets[:]:
-        response += f"🔹 #{ticket['ticket_id']} ({ticket['category']}): {ticket['text'][:100]} {ticket['created_at']}\n"
+        response += f"🔹 #{ticket['ticket_id']} | {ticket['status']} | ({ticket['category']}): {ticket['text'][:100]}\n"
     await message.answer(response)
 
 

@@ -62,7 +62,7 @@ async def user_in_db(user_id: int):
     user_exists = await conn.fetchval("SELECT 1 FROM users WHERE user_id = $1", user_id)
     if not user_exists:
         print("Пользователя нет в таблице")
-        await conn.execute("INSERT INTO users (user_id, role) VALUES ($1, $2)", user_id, 'USER')
+        await conn.execute("INSERT INTO users (user_id, state, role) VALUES ($1, $2, $3)", user_id, 'idle', 'USER')
     await conn.close()
 
 # Создаём новую заявку

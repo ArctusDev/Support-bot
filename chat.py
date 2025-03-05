@@ -1,6 +1,5 @@
 from aiogram import Router, types
-from database import get_user_state, get_ticket_by_id, is_operator
-
+from database import get_user_state, get_ticket_by_id, is_operator, set_user_state
 
 chat_router = Router()
 
@@ -11,7 +10,11 @@ async def relay_messages(message: types.Message):
     print(user_id)
     state = await get_user_state(user_id)
     if not state or not state.startswith("chating_"):
-        await message.answer("❌ Я вас не понял. Используйте кнопки в меню.", reply_markup=main_menu())
+        from Bot import main_menu, admin_keyboard
+        if await is_operator(user_id):
+            await message.answer("❌ Я вас не понял. Используйте кнопки в меню.", reply_markup=admin_keyboard())
+        else:
+            await message.answer("❌ Я вас не понял. Используйте кнопки в меню.", reply_markup=main_menu())
         return
 
     ticket_id = int(state.split("_")[1])
@@ -19,11 +22,15 @@ async def relay_messages(message: types.Message):
     if not ticket:
         return
     if await is_operator(user_id):
-        target_id = ticket["user_id"]
+        target_id = ticket["operator_id"]
+        if target_id == user_id:
+            await message.answer("❌ Это ваша заявка, вы не можете на неё отвечать")
+            await set_user_state(user_id, state='idle')
+            return
         print(f"Отправляет оператор {target_id}")
         sender = "Оператор"
     else:
-        target_id = ticket["operator_id"]
+        target_id = ticket["user_id"]
         print(f"Отправляет Пользователь {target_id}")
         sender = "Пользователь"
     print(message.text, message.caption)

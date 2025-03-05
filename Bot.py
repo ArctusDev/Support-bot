@@ -7,14 +7,13 @@ from aiogram.filters import Command
 from aiogram.exceptions import TelegramBadRequest
 import logging
 from dotenv import load_dotenv
-from setuptools.command.build_ext import use_stubs
 
 from admin import admin_router
 from admin import admin_keyboard
 from anty_ddos import WriteLimit
 from database import (
     init, set_user_state, get_user_state, clear_user_state, set_user_category, get_user_category,
-    create_ticket, get_user_tickets, is_operator
+    create_ticket, get_user_tickets, is_operator, user_in_db
 )
 from chat import chat_router
 
@@ -116,6 +115,7 @@ async def help_command(message: types.Message):
 @router.message(lambda message: message.text == "📩 Создать заявку")
 async def create_ticket_button(message: types.Message):
     user_id = message.from_user.id
+    await user_in_db(user_id)
     state = await get_user_state(user_id)
     print(state)
     if state.startswith("chating_"):

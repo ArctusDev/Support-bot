@@ -115,17 +115,6 @@ async def get_user_state(user_id: int):
     finally:
         await conn.close()
 
-# Очищаем состояние пользователя
-async def clear_user_state(user_id: int):
-    conn = await init_db()
-    try:
-        await conn.execute("UPDATE users SET category = NULL WHERE user_id = $1",
-                           user_id)
-        print(f"✅ Состояние пользователя {user_id} изменено на 'NULL'.")
-    except Exception as e:
-        logger.error(f"Ошибка при очистке состояния пользователя {user_id}: {e}")
-    finally:
-        await conn.close()
 
 async def is_operator(user_id):
     conn = await init_db()

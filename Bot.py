@@ -12,7 +12,7 @@ from admin import admin_router
 from admin import admin_keyboard
 from anty_ddos import WriteLimit
 from database import (
-    init, set_user_state, get_user_state, clear_user_state, set_user_category, get_user_category,
+    init, set_user_state, get_user_state, set_user_category, get_user_category,
     create_ticket, get_user_tickets, is_operator, user_in_db
 )
 from chat import chat_router
@@ -91,14 +91,6 @@ async def check_subscription(callback_query: CallbackQuery):
         await start_command(callback_query.message)    # Перезапуск start
     else:
         await callback_query.answer("❌ Вы ещё не подписаны!", show_alert=True)
-
-
-@router.callback_query(lambda c: c.data == "cancel_ticket")
-async def cancel_ticket(callback_query: CallbackQuery):
-    user_id = callback_query.from_user.id
-    await clear_user_state(user_id)
-    await callback_query.message.edit_text("❌ Вы отменили создание заявки.")
-    await callback_query.answer()
 
 
 @router.message(lambda message: message.text == "ℹ️ Помощь")
@@ -205,7 +197,6 @@ async def save_ticket(message: types.Message):
         ticket_id = await create_ticket(user_id, text, category)
         await message.answer(f"✅ Ваша заявка #{ticket_id} принята!")
         await set_user_state(user_id, state='open')
-        await clear_user_state(user_id)
     except Exception as e:
         logging.exception(f"Ошибка при создании тикета: {e}")
         await message.answer("❌ Ошибка при создании тикета. Попробуйте позже.")
@@ -221,6 +212,14 @@ async def my_tickets(message: types.Message):
     for ticket in tickets[:]:
         response += f"🔹 #{ticket['ticket_id']} | {ticket['status']} | ({ticket['category']}): {ticket['text'][:100]}\n"
     await message.answer(response)
+
+
+@router.callback_query(lambda c: c.data == "cancel_ticket")
+async def cancel_ticket(callback_query: CallbackQuery):
+    user_id = callback_query.from_user.id
+    await set_user_state(user_id, state='idle')
+    await callback_query.message.edit_text("❌ Вы отменили создание заявки.")
+    await callback_query.answer()
 
 
 async def main():

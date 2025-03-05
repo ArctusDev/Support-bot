@@ -4,7 +4,7 @@ from aiogram import Router, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton, ReplyKeyboardMarkup
 from database import (
     get_all_tickets, update_ticket_status, get_ticket_by_id, set_user_role, get_user_role,
-    add_admin_user, set_user_state, is_operator, get_user_state, init_db, clear_user_state
+    add_admin_user, set_user_state, is_operator, get_user_state, init_db
 )
 from dotenv import load_dotenv
 
@@ -164,5 +164,5 @@ async def process_operator_confirmation(callback: types.CallbackQuery):
 async def cancel_operator(callback: types.CallbackQuery):
     """Отмена добавления оператора"""
     admin_id = callback.from_user.id
-    await clear_user_state(admin_id)  # Очищаем состояние
+    await set_user_state(admin_id, state='idle')
     await callback.message.edit_text("❌ Операция отменена.")

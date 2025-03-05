@@ -23,7 +23,7 @@ async def relay_messages(message: types.Message):
         return
     if await is_operator(user_id):
         target_id = ticket["operator_id"]
-        if target_id == user_id:
+        if target_id == ticket["user_id"]:
             await message.answer("❌ Это ваша заявка, вы не можете на неё отвечать")
             await set_user_state(user_id, state='idle')
             return

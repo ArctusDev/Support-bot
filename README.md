@@ -30,7 +30,6 @@ pip install -r requirements.txt
 ```env
 BOT_TOKEN=your_bot_token
 DB_URL=postgresql://user:password@localhost:5432/dbname
-SUPPORT_CHAT=-1001234567890  # ID чата с операторами
 CHANNEL_ID=@yourchannel  # Канал для проверки подписки
 ```
 

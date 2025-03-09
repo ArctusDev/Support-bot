@@ -110,13 +110,13 @@ async def help_command(message: types.Message):
 @router.message(lambda message: message.text == "📩 Создать заявку")
 async def create_ticket_button(message: types.Message):
     user_id = message.from_user.id
+    await user_in_db(user_id)
     state = await get_user_state(user_id)
-    print(state)
     if state.startswith("chating_"):
         await message.answer("⚠️Вы находитесь в чате с оператором")
         return
     await message.answer("Выберите тип обращения:", reply_markup=category_keyboard())
-    await set_user_state(message.from_user.id, "choosing_category")
+    await set_user_state(user_id, "choosing_category")
 
 @router.callback_query(lambda c: c.data.startswith("category_"))
 async def receive_category(callback_query: CallbackQuery):

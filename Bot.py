@@ -224,7 +224,7 @@ async def cancel_ticket(callback_query: CallbackQuery):
 
 async def main():
     await init()
-    router.message.middleware(WriteLimit(limit=3.0))
+    router.message.middleware(WriteLimit(limit=2.3))
 
     dp.include_router(router)
     dp.include_router(admin_router)
